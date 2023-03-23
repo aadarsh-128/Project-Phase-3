@@ -1,6 +1,7 @@
 const express = require("express");
 const route = express.Router();
 const User = require("../model/user_account");
+const UserDetails = require("../model/user_details");
 const { check, validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwtHandlerRedis = require("../jwt_handler");
@@ -107,5 +108,66 @@ route.get("/", authChecker, async (req, res) => {
     res.status(500).json({ msg: "Invalid Token!" });
   }
 });
+
+route.post(
+  "/addDetails",
+  [
+    check("name", "Name is required").not().isEmpty(),
+    check("email", "Please enter your valid email").isEmail(),
+    check("gender", "Please enter your valid gender").not().isEmpty(),
+    check("yearOfBirth", "Please enter your year of birth").not().isEmpty(),
+    check("height", "Please enter your height").not().isEmpty(),
+    check("weight", "Please enter your weight").not().isEmpty(),
+  ],
+  async (req, res) => {
+    //validate data
+    const error = validationResult(req);
+    if (!error.isEmpty()) {
+      return res.status(400).json({ errors: error.array() });
+    }
+    let { name, email, gender, yearOfBirth, height, weight } = req.body;
+    try {
+        let alreadyExistUser = UserDetails({
+          name,
+          email,
+          gender,
+          yearOfBirth,
+          height,
+          weight,
+        });
+        await alreadyExistUser.save();
+
+        // generate the token and set the token in Redis
+        const token = await jwtHandlerRedis.generateToken(alreadyExistUser.id);
+        return res.json({ token });
+      //}
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json("Server error");
+    }
+  }
+);
+
+route.get(
+  "/getDetails",
+  [
+    check("email", "Please enter your valid email").isEmail(),
+  ],
+  async (req, res) => {
+    //validate data
+    const error = validationResult(req);
+    if (!error.isEmpty()) {
+      return res.status(400).json({ errors: error.array() });
+    }
+    let {email } = req.body;
+    try {
+        let userDetails = await UserDetails.findOne({ email: email });
+        return res.json({ userDetails});
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json("Server error");
+    }
+  }
+);
 
 module.exports = route;
