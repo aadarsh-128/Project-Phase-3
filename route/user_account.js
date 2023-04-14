@@ -28,6 +28,7 @@ route.post(
     if (!error.isEmpty()) {
       return res.status(400).json({ errors: error.array() });
     }
+    console.log(req.body);
     let { name, email, password } = req.body;
     try {
       let alreadyExistUser = await User.findOne({ email: email });

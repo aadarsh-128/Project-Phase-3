@@ -1,7 +1,8 @@
 const express = require('express');
 const app = express();
 require('./db')
-
+var cors = require('cors')
+app.use(cors());
 app.use(express.json({ extended: true }));
 app.use('/', require("./route/user_account"),);
 
