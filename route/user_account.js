@@ -239,7 +239,12 @@ route.get(
     let {email } = req.body;
     try {
       let userReports = await xRayUploadModel.find({ email: email });
-      return res.json({ userReports});
+      let userDetails = await UserDetails.find({email: email});
+      console.log("Hello");
+      let data ={};
+      data.userDetails = userDetails;
+      data.userReports = userReports;
+      return res.json({data});
       // let userDetails = await UserDetails.findOne({ email: email });
       //   return res.json({ userDetails});
     } catch (err) {
