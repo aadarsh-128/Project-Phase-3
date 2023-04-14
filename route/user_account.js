@@ -9,7 +9,8 @@ const jwtHandlerRedis = require("../jwt_handler");
 const authChecker = require("../middlware/auth");
 const dateTime = require('node-datetime');
 const multer = require('multer');
-const pdfService = require('../Services/generatePDF')
+const pdfService = require('../Services/generatePDF');
+const { response } = require("express");
 
 route.post(
   "/signup",
@@ -200,22 +201,21 @@ route.post(
     let email=req.body.email
     let file = req.file.buffer
     let date = dateTime.create().format('Y-m-d H:M:S')
-        
+    let result = getReport.get(req.file.originalname)|| "Default Report"
     try {
         let xrayUpload = xRayUploadModel({
           email,
           file,
+          result,
           date
         });
         
-        await xrayUpload.save();
-        
-
+        var response = await xrayUpload.save();
 
 
         //generate the token and set the token in Redis
-        const token = await jwtHandlerRedis.generateToken(alreadyExistUser.id);
-        return res.json({ "message": "success" });
+        //const token = await jwtHandlerRedis.generateToken(alreadyExistUser.id);
+        return res.json({ "id":response._id, "message": "success"});
       //}
     } catch (err) {
       console.error(err);
@@ -225,28 +225,20 @@ route.post(
 );
 
 route.get(
-  "/generateReport",
-  // [
-  //   check("email", "Please enter your valid email").isEmail(),
-  // ],
+  "/getReport",
+  [
+    check("email", "Please enter your valid email").isEmail(),
+  ],
   async (req, res) => {
     //validate data
-    // const error = validationResult(req);
-    // if (!error.isEmpty()) {
-    //   return res.status(400).json({ errors: error.array() });
-    // }
-    //let {email } = req.body;
+    const error = validationResult(req);
+    if (!error.isEmpty()) {
+      return res.status(400).json({ errors: error.array() });
+    }
+    let {email } = req.body;
     try {
-        const stream = res.writeHead(200, {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': 'attachment;filename=report.pdf',
-        });
-
-        pdfService.buildPDF(
-          (chunk)=>stream.write(chunk),
-          ()=>stream.end()
-        );  
-        return res;
+      let userReports = await xRayUploadModel.find({ email: email });
+      return res.json({ userReports});
       // let userDetails = await UserDetails.findOne({ email: email });
       //   return res.json({ userDetails});
     } catch (err) {
@@ -255,5 +247,13 @@ route.get(
     }
   }
 );
+
+const getReport = new Map([
+  ["xray.jpg", "Report0"],
+  ["xray1.jpg", "Report1"],
+  ["xray2.jpg", "Report2"],
+  ["xray3.jpg", "Report3"],
+  ["xray4.jpg", "Report4"]
+])
 
 module.exports = route;

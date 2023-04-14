@@ -9,6 +9,10 @@ const xrayUploadModel = mongoose.Schema({
         type: Buffer,
         require: true
     },
+    result: {
+        type: String,
+        require: true
+    },
     date: {
         type: Date,
         default: Date.now,
