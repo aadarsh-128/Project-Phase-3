@@ -2,10 +2,14 @@ const express = require("express");
 const route = express.Router();
 const User = require("../model/user_account");
 const UserDetails = require("../model/user_details");
+const xRayUploadModel = require("../model/xrayUploadModel");
 const { check, validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwtHandlerRedis = require("../jwt_handler");
 const authChecker = require("../middlware/auth");
+const dateTime = require('node-datetime');
+const multer = require('multer');
+const pdfService = require('../Services/generatePDF')
 
 route.post(
   "/signup",
@@ -163,6 +167,88 @@ route.get(
     try {
         let userDetails = await UserDetails.findOne({ email: email });
         return res.json({ userDetails});
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json("Server error");
+    }
+  }
+);
+
+const file = multer({
+  limits:{
+      fileSize:10000000,
+  },
+  fileFilter(req,file,cb){
+      if(!file.originalname.match(/\.(jpg|png|JPG|PNG|JPEG|jpeg)$/))
+      return cb(new Error('This is not a correct format of the file'))
+      cb(undefined,true)
+  }
+})
+
+route.post(
+  "/uploadXRay",
+  // [
+  //   check("email", "Please enter your valid email").isEmail(),
+  // ],
+  file.single('file'),
+  async (req, res) => {
+    //validate data
+    const error = validationResult(req);
+    if (!error.isEmpty()) {
+      return res.status(400).json({ errors: error.array() });
+    }
+    let email=req.body.email
+    let file = req.file.buffer
+    let date = dateTime.create().format('Y-m-d H:M:S')
+        
+    try {
+        let xrayUpload = xRayUploadModel({
+          email,
+          file,
+          date
+        });
+        
+        await xrayUpload.save();
+        
+
+
+
+        //generate the token and set the token in Redis
+        const token = await jwtHandlerRedis.generateToken(alreadyExistUser.id);
+        return res.json({ "message": "success" });
+      //}
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json("Server error");
+    }
+  }
+);
+
+route.get(
+  "/generateReport",
+  // [
+  //   check("email", "Please enter your valid email").isEmail(),
+  // ],
+  async (req, res) => {
+    //validate data
+    // const error = validationResult(req);
+    // if (!error.isEmpty()) {
+    //   return res.status(400).json({ errors: error.array() });
+    // }
+    //let {email } = req.body;
+    try {
+        const stream = res.writeHead(200, {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment;filename=report.pdf',
+        });
+
+        pdfService.buildPDF(
+          (chunk)=>stream.write(chunk),
+          ()=>stream.end()
+        );  
+        return res;
+      // let userDetails = await UserDetails.findOne({ email: email });
+      //   return res.json({ userDetails});
     } catch (err) {
       console.error(err);
       return res.status(500).json("Server error");
