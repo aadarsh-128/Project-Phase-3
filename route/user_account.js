@@ -254,6 +254,47 @@ route.get(
   }
 );
 
+route.get(
+  "/downloadReport",
+  // [
+  //   check("email", "Please enter your valid email").isEmail(),
+  // ],
+  async (req, res) => {
+    //validate data
+    // const error = validationResult(req);
+    // if (!error.isEmpty()) {
+    //   return res.status(400).json({ errors: error.array() });
+    // }
+    let {email } = req.body;
+    try {
+       let userReports = await xRayUploadModel.find({ email: email });
+      // let userDetails = await UserDetails.find({email: email});
+      // console.log("Hello");
+      // let data ={};
+      // data.userDetails = userDetails;
+      // data.userReports = userReports;
+      
+      const stream = res.writeHead(200, {
+        "content-Type":"application/pdf",
+        "Content-Disposition":"attachment; filename=report.pdf"
+      });
+      let userDetails = await UserDetails.find({email: email});
+      
+      pdfService.buildPDF(
+        (chunk)=>stream.write(chunk),
+        () => stream.end(), userDetails[0]
+      );
+      
+      //return res.json({data});
+      // let userDetails = await UserDetails.findOne({ email: email });
+      //   return res.json({ userDetails});
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json("Server error");
+    }
+  }
+);
+
 const getReport = new Map([
   ["xray.jpg", "Report0"],
   ["xray1.jpg", "Report1"],
