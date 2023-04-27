@@ -187,43 +187,43 @@ const file = multer({
   }
 })
 
-route.post(
-  "/uploadXRay",
-  // [
-  //   check("email", "Please enter your valid email").isEmail(),
-  // ],
-  file.single('file'),
-  async (req, res) => {
-    //validate data
-    const error = validationResult(req);
-    if (!error.isEmpty()) {
-      return res.status(400).json({ errors: error.array() });
-    }
-    let email=req.body.email
-    let file = req.file.buffer
-    let date = dateTime.create().format('Y-m-d H:M:S')
-    let result = getReport.get(req.file.originalname)|| "Default Report"
-    try {
-        let xrayUpload = xRayUploadModel({
-          email,
-          file,
-          result,
-          date
-        });
+// route.post(
+//   "/uploadXRay",
+//   // [
+//   //   check("email", "Please enter your valid email").isEmail(),
+//   // ],
+//   file.single('file'),
+//   async (req, res) => {
+//     //validate data
+//     const error = validationResult(req);
+//     if (!error.isEmpty()) {
+//       return res.status(400).json({ errors: error.array() });
+//     }
+//     let email=req.body.email
+//     let file = req.file.buffer
+//     let date = dateTime.create().format('Y-m-d H:M:S')
+//     let result = getReport.get(req.file.originalname)|| "Default Report"
+//     try {
+//         let xrayUpload = xRayUploadModel({
+//           email,
+//           file,
+//           result,
+//           date
+//         });
         
-        var response = await xrayUpload.save();
+//         var response = await xrayUpload.save();
 
 
-        //generate the token and set the token in Redis
-        //const token = await jwtHandlerRedis.generateToken(alreadyExistUser.id);
-        return res.json({ "id":response._id, "message": "success"});
-      //}
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json("Server error");
-    }
-  }
-);
+//         //generate the token and set the token in Redis
+//         //const token = await jwtHandlerRedis.generateToken(alreadyExistUser.id);
+//         return res.json({ "id":response._id, "message": "success"});
+//       //}
+//     } catch (err) {
+//       console.error(err);
+//       return res.status(500).json("Server error");
+//     }
+//   }
+// );
 
 route.get(
   "/getReport",
@@ -267,7 +267,7 @@ route.get(
     // }
     let {email } = req.body;
     try {
-       let userReports = await xRayUploadModel.find({ email: email });
+      let userReports = await xRayUploadModel.find({ email: email });
       // let userDetails = await UserDetails.find({email: email});
       // console.log("Hello");
       // let data ={};
@@ -297,10 +297,62 @@ route.get(
 
 const getReport = new Map([
   ["xray.jpg", "Report0"],
-  ["xray1.jpg", "Report1"],
-  ["xray2.jpg", "Report2"],
+  ["xray1.png", "There is increased opacity within right upper lobe possible mass associated area of atelectasis focal consolidation cardiac silhouette has normal limits opacity in the left midlung overlying the posterior left 5th rib may represent focal airspace disease"],
+  ["xray2.png", "nterstitial markings diffusely prominent both lungs heart size normal"],
   ["xray3.jpg", "Report3"],
   ["xray4.jpg", "Report4"]
 ])
+
+route.post(
+  "/uploadXRay",
+  // [
+  //   check("email", "Please enter your valid email").isEmail(),
+  // ],
+  file.single('file'),
+  async (req, res) => {
+    //validate data
+    const error = validationResult(req);
+    if (!error.isEmpty()) {
+      return res.status(400).json({ errors: error.array() });
+    }
+    let email=req.body.email
+    let file = req.file.buffer
+    console.log(file);
+    let date = dateTime.create().format('Y-m-d H:M:S')
+    let result = getReport.get(req.file.originalname)|| "Default Report"
+    try {
+        let xrayUpload = xRayUploadModel({
+          email,
+          file,
+          result,
+          date
+        });
+        
+      var response = await xrayUpload.save();
+
+      let userReports = await xRayUploadModel.find({ email: email });
+      
+      let userDetails = await UserDetails.find({email: email});
+      
+      if(userDetails[0] == undefined) { throw new Error("User Not Found")};
+
+
+
+      const stream = res.writeHead(200, {
+        "content-Type":"application/pdf",
+        "Content-Disposition":"attachment; filename=report.pdf"
+      });
+      
+      pdfService.buildPDF(
+        (chunk)=>stream.write(chunk),
+        () => stream.end(), userDetails[0], file, result
+      );
+
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json("Server error");
+    }
+  }
+);
 
 module.exports = route;
